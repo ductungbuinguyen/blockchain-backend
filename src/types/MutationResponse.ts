@@ -1,13 +1,9 @@
-import { Field, InterfaceType } from 'type-graphql'
+import { ObjectType } from "type-graphql"
+import { IMutationResponse } from "./IMutationResponse"
 
-@InterfaceType()
-export abstract class IMutationResponse {
-	@Field()
-	code: number
-
-	@Field()
+@ObjectType({ implements: IMutationResponse })
+export class MutationResponse implements IMutationResponse {
+  code: number
 	success: boolean
-
-	@Field({ nullable: true })
 	message?: string
 }

@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID } from "type-graphql"
-import { Entity, BaseEntity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from "typeorm"
+import { Entity, BaseEntity, PrimaryGeneratedColumn, Column, OneToOne } from "typeorm"
 import { User } from "./User"
 
 @ObjectType()
@@ -15,7 +15,6 @@ export class Contract extends BaseEntity {
 
 	@Field(() => User)
 	@OneToOne(() => User, (user) => user.contract)
-	@JoinColumn()
   seller!: User
   
 }

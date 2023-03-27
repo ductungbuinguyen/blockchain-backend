@@ -1,36 +1,96 @@
+import { Context } from './../types/Context';
 import { User } from './../entities/User';
-import { Arg, ID, Mutation, Resolver } from "type-graphql";
-import { UserMutationResponse } from 'src/types/UserMutationResponse';
-import { CreateContractMutationResponse } from 'src/types/CreateContractMutationResponse';
-import { Contract } from '../entities/Contract';
-import { createNewContract } from '../utils/contractHandler';
+import {
+	Arg,
+	Ctx,
+	Mutation,
+	Query,
+	Resolver,
+	UseMiddleware,
+} from 'type-graphql';
+import {
+	createOrder,
+	getContractNonce,
+  getCurrentBlockTimestamp,
+} from '../utils/contract';
+import { CreateOrderInput } from '../types/CreateOrderInput';
+import { CreateOrderMutationResponse } from '../types/CreateOrderMutationResponse';
+import { InformationForCreateOrderInput } from '../types/InformationForCreateOrderInput';
+import { InformationForCreateOrderResponse } from '../types/InformationForCreateOrderResponse';
+import { checkAuth } from '../middleware/checkAuth';
 
 @Resolver()
 export class ContractResolver {
-  @Mutation(_return => UserMutationResponse)
-  async createContract(
-    @Arg('userId', _type => ID) userId: number,
-  ): Promise<CreateContractMutationResponse> {
-    const existingUser = await User.findOne(userId)
-    if (!existingUser) {
+	@Query((_return) => InformationForCreateOrderResponse)
+	@UseMiddleware(checkAuth)
+	async informationForCreateOrder(
+		@Arg('informationForCreateOrderInput')
+		informationForCreateOrderInput: InformationForCreateOrderInput,
+		@Ctx() { user }: Context
+	): Promise<InformationForCreateOrderResponse> {
+		const existingUser = await User.findOne({
+			where: { id: user.userId },
+			relations: ['contract'],
+		});
+		if (!existingUser) {
 			return {
-				code: 400,
-				success: false
+				code: 500,
+				success: false,
+			};
+		}
+		const nonce = await getContractNonce(existingUser?.contract?.address);
+    const timestamp = await getCurrentBlockTimestamp();
+		const { buyerEmail } = informationForCreateOrderInput;
+		const buyerUser = await User.findOne({
+			where: { email: buyerEmail },
+			relations: ['contract'],
+		});
+		const buyerAddress = buyerUser?.metaMaskPublicKey
+		if(!nonce || !timestamp || !buyerAddress) {
+			return {
+				code: 500,
+				success: false,
+				message: 'Something happen when getting data for create order',
 			}
 		}
-    const address = await createNewContract(existingUser.metaMaskPublicKey)
-    if(!address) return {
-      code: 400,
-			success: false
-    }
-    const contract = new Contract()
-    contract.seller = existingUser
-    contract.address = address
-    const contractRecord = await contract.save()
-    return {
-      code: 200,
-      success: true,
-      contract: contractRecord,
-    }
-  }
+		return {
+			code: 200,
+			success: true,
+			buyerAddress,
+			nonce,
+			currentBlockTimestamp: timestamp,
+		}
+	}
+
+	@Mutation((_return) => CreateOrderMutationResponse)
+	@UseMiddleware(checkAuth)
+	async createOrder(
+		@Arg('createOrderInput') createOrderInput: CreateOrderInput,
+		@Ctx() { user }: Context
+	): Promise<CreateOrderMutationResponse> {
+		const { buyerAddress, nonce, price, shipDeadline, signature } =
+			createOrderInput;
+		const existingUser = await User.findOne({
+			where: { id: user.userId },
+			relations: ['contract'],
+		});
+		if (!existingUser) {
+			return {
+				code: 500,
+				success: false,
+			};
+		}
+		await createOrder({
+			contractAddress: existingUser?.contract?.address,
+			buyerAddress: buyerAddress,
+			nonce,
+			price,
+			shipDeadline,
+			signature,
+		});
+		return {
+			code: 200,
+			success: true,
+		};
+	}
 }

@@ -1,6 +1,6 @@
 import { Field, ObjectType } from 'type-graphql'
 import { User } from '../entities/User'
-import { IMutationResponse } from './MutationResponse'
+import { IMutationResponse } from './IMutationResponse'
 
 @ObjectType({ implements: IMutationResponse })
 export class UserMutationResponse implements IMutationResponse {

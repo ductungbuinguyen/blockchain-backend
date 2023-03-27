@@ -4,7 +4,7 @@ export enum OrderStatus {
   CREATED = "CREATED",
   PAID = "PAID",
   SHIPPING = "SHIPPING",
-  CONFIRMED = "CONFIRMED",
+  COMPLETE = "COMPLETE",
   CANCELED = "CANCELED",
 }
 

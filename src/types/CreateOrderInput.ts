@@ -3,16 +3,13 @@ import { Field, InputType } from 'type-graphql'
 @InputType()
 export class CreateOrderInput {
 	@Field()
-	sellerEmail: string
-
-	@Field()
-	buyerEmail: string
+	buyerAddress: string
 
 	@Field()
 	price: number
 
 	@Field()
-	shipDeadlineAmount: number
+	shipDeadline: number
 
 	@Field()
 	nonce: number

@@ -13,18 +13,27 @@ export class Order extends BaseEntity {
 
   @Field(_type => ID)
 	@Column()
-	decentralizedId!: number
+	decentralizedId!: string
 
   @Field()
-	@Column({nullable: true})
+	@Column({
+		nullable: true,
+		type: 'bigint',
+	})
 	price?: number
 
   @Field()
-	@Column({nullable: true})
+	@Column({
+		nullable: true,
+		type: 'bigint',
+	})
 	shipDeadline?: number
 
   @Field()
-	@Column({nullable: true})
+	@Column({
+		nullable: true,
+		type: 'bigint',
+	})
 	confirmDeadline?: number
 
   @Field(() => [User])
@@ -42,4 +51,11 @@ export class Order extends BaseEntity {
 		enum: OrderStatus,
 	})
 	status?: OrderStatus;
+
+	@Field()
+	@Column({
+		nullable: true,
+		type: 'bigint',
+	})
+	orderTime?: number
 }

@@ -1,8 +1,9 @@
 import { Gender } from './../types/Gender';
 import { Field, ID, ObjectType } from 'type-graphql'
-import { BaseEntity, Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
+import { BaseEntity, Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
 import { Order } from './Oder';
 import { Contract } from './Contract';
+import { MerchantMetaData } from './MerchantMetaData';
 
 @ObjectType()
 @Entity()
@@ -39,12 +40,6 @@ export class User extends BaseEntity {
 	@Column({
 		nullable: true,
 	})
-	isMerchant?: boolean
-
-	@Field()
-	@Column({
-		nullable: true,
-	})
 	identityCode?: string
 
 	@Field()
@@ -63,7 +58,13 @@ export class User extends BaseEntity {
 
 	@Field(() => [Contract])
 	@OneToOne(() => Contract, (contract) => contract.seller)
+	@JoinColumn()
   contract: Contract
+
+	@Field(() => [MerchantMetaData])
+	@OneToOne(() => MerchantMetaData, (merchantMetaData) => merchantMetaData.owner)
+	@JoinColumn()
+  merchantMetaData: MerchantMetaData
 
 	@Field(() => [Order])
 	@OneToMany(() => Order, (order) => order.buyer)

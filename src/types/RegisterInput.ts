@@ -19,9 +19,6 @@ export class RegisterInput {
 	phoneNumber: string
 
 	@Field()
-	isMerchant: boolean
-
-	@Field()
 	identityCode: string
 
 	@Field()
