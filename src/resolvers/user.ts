@@ -1,7 +1,7 @@
 import { NeedToRefreshData } from '../types/NeedToRefreshData';
 import { RegisterMerchantInput } from './../types/RegisterMerchantInput';
 import { RegisterInput } from '../types/RegisterInput';
-import { Arg, Ctx, ID, Mutation, Query, Resolver, Root, Subscription } from 'type-graphql';
+import { Arg, Ctx, ID, Mutation, Query, Resolver, Root, Subscription, UseMiddleware } from 'type-graphql';
 import { User } from '../entities/User';
 import argon2 from 'argon2';
 import { UserMutationResponse } from '../types/UserMutationResponse';
@@ -11,12 +11,14 @@ import { Context } from '../types/Context';
 import { MutationResponse } from '../types/MutationResponse';
 import { MerchantMetaData } from '../entities/MerchantMetaData';
 import { deployECommerceContract, generateMerchantSecretKey } from '../utils/contract';
-import { NeedToRefreshDataPayload } from 'src/types/NeedToRefreshData';
+import { NeedToRefreshDataPayload } from '../types/NeedToRefreshData';
+import { checkAuth } from '../middleware/checkAuth';
 
 @Resolver()
 export class UserResolver {
 
 	@Query((_return) => [User])
+	@UseMiddleware(checkAuth)
 	async users(): Promise<User[]> {
 		return await User.find();
 	}

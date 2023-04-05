@@ -1,4 +1,3 @@
-import { MessageResolver } from './resolvers/message';
 require('dotenv').config()
 import 'reflect-metadata'
 import express from 'express'
@@ -51,7 +50,7 @@ const main = async () => {
 	
 	const schema = await buildSchema({
 		validate: false,
-		resolvers: [UserResolver, ContractResolver, MessageResolver],
+		resolvers: [UserResolver, ContractResolver],
 		nullableByDefault: true,
 		pubSub
 	})

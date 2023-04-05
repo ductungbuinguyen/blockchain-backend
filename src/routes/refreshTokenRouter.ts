@@ -28,6 +28,7 @@ router.get('/', async (req, res) => {
 		}
 
 		sendRefreshToken(res, existingUser)
+		console.log("existingUser", existingUser)
 
 		return res.json({
 			success: true,
