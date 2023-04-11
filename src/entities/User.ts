@@ -1,72 +1,98 @@
 import { Gender } from './../types/Gender';
-import { Field, ID, ObjectType } from 'type-graphql'
-import { BaseEntity, Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm'
-import { Order } from './Oder';
+import { Field, ID, ObjectType } from 'type-graphql';
+import {
+	BaseEntity,
+	Column,
+	Entity,
+	JoinColumn,
+	OneToMany,
+	OneToOne,
+	PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Order } from './Order';
 import { Contract } from './Contract';
 import { MerchantMetaData } from './MerchantMetaData';
+import { ActivityHistory } from './ActivityHistory';
 
 @ObjectType()
 @Entity()
 export class User extends BaseEntity {
-	@Field(_type => ID)
+	@Field((_type) => ID)
 	@PrimaryGeneratedColumn()
-	id!: number
+	id!: number;
 
 	@Field()
 	@Column({ unique: true })
-	email!: string
+	email!: string;
 
 	@Field(() => Gender)
 	@Column({
-		type: "enum",
+		type: 'enum',
 		enum: Gender,
 		nullable: true,
 	})
-	gender?: string
+	gender?: string;
 
 	@Field()
 	@Column({
 		nullable: true,
 	})
-	fullName?: string
+	fullName?: string;
 
 	@Field()
 	@Column({
 		nullable: true,
 	})
-	phoneNumber?: string
+	phoneNumber?: string;
 
 	@Field()
 	@Column({
 		nullable: true,
 	})
-	identityCode?: string
+	identityCode?: string;
 
 	@Field()
 	@Column({
 		nullable: true,
 	})
-	metaMaskPublicKey: string
+	metaMaskPublicKey: string;
 
 	@Column({
 		nullable: true,
 	})
-	password!: string
+	password!: string;
 
 	@Column({ default: 0 })
-	tokenVersion: number
+	tokenVersion: number;
 
 	@Field(() => [Contract])
 	@OneToOne(() => Contract, (contract) => contract.seller)
 	@JoinColumn()
-  contract: Contract
+	contract: Contract;
 
 	@Field(() => [MerchantMetaData])
-	@OneToOne(() => MerchantMetaData, (merchantMetaData) => merchantMetaData.owner)
+	@OneToOne(
+		() => MerchantMetaData,
+		(merchantMetaData) => merchantMetaData.owner
+	)
 	@JoinColumn()
-  merchantMetaData: MerchantMetaData
+	merchantMetaData: MerchantMetaData;
 
 	@Field(() => [Order])
 	@OneToMany(() => Order, (order) => order.buyer)
-  ordersAsBuyer: Order[]
+	ordersAsBuyer: Order[];
+
+	@Field(() => [ActivityHistory])
+	@OneToMany(() => ActivityHistory, (activity) => activity.owner)
+	activityHistoriesAsOwner: ActivityHistory[]
+
+	@Field(() => [ActivityHistory])
+	@OneToMany(() => ActivityHistory, (activity) => activity.owner)
+	activityHistoriesAsDestination: ActivityHistory[]
+
+	@Field()
+	@Column({
+		nullable: true,
+	})
+	Base64Avatar: string
 }

@@ -1,0 +1,71 @@
+[
+	{ "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "shop",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "seller",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "tokenAddress",
+				"type": "address"
+			}
+		],
+		"name": "ShopDeployed",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{ "internalType": "address", "name": "seller_", "type": "address" },
+			{ "internalType": "address", "name": "tokenAddress_", "type": "address" }
+		],
+		"name": "deployEShop",
+		"outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "address", "name": "seller_", "type": "address" },
+			{ "internalType": "address", "name": "tokenAddress_", "type": "address" }
+		],
+		"name": "deployShop",
+		"outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"name": "eShopClones",
+		"outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{ "internalType": "address", "name": "feeCollector_", "type": "address" }
+		],
+		"name": "setFeeCollector",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+		"name": "shopClones",
+		"outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]

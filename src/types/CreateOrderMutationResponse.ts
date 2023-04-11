@@ -1,4 +1,4 @@
-import { Order } from './../entities/Oder';
+import { Order } from '../entities/Order';
 import { Field, ObjectType } from 'type-graphql'
 import { IMutationResponse } from './IMutationResponse'
 

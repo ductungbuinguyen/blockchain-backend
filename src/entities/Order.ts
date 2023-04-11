@@ -1,8 +1,9 @@
 import { OrderStatus } from '../types/OrderStatus';
 import { ObjectType, Field, ID } from "type-graphql";
-import { Entity, BaseEntity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
+import { Entity, BaseEntity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from "typeorm";
 import { User } from "./User";
 import { Contract } from './Contract';
+import { ActivityHistory } from './ActivityHistory';
 
 @ObjectType()
 @Entity()
@@ -58,4 +59,14 @@ export class Order extends BaseEntity {
 		type: 'bigint',
 	})
 	orderTime?: number
+
+	@Field(() => [ActivityHistory])
+	@OneToMany(() => ActivityHistory, (activity) => activity.targetOrder)
+	activityHistories: ActivityHistory[]
+
+	@Field()
+	@Column({
+		nullable: true,
+	})
+	base64QrCode: string;
 }

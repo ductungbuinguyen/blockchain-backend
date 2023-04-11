@@ -1,15 +1,19 @@
-import { NeedToRefreshData } from './../types/NeedToRefreshData';
 import { PubSub } from 'graphql-subscriptions';
+import { ActivityHistoryPayload } from '../types/ActivityHistoryPayload';
 
 const pubsub = new PubSub()
 
-const publishNeedToRefreshData = ({
-  type,
-}: NeedToRefreshData) => {
-  pubsub.publish('NEED_TO_REFRESH_DATA', { type });
+const publishActivityHistory = ({
+  activityHistory,
+  userIds,
+}: ActivityHistoryPayload) => {
+  pubsub.publish('ACTIVITY_HISTORY', { 
+    activityHistory,
+    userIds
+  });
 }
 
 export {
   pubsub,
-  publishNeedToRefreshData,
+  publishActivityHistory,
 }

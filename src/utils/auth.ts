@@ -6,6 +6,7 @@ export const createToken = (type: 'accessToken' | 'refreshToken', user: User) =>
 	sign(
 		{
 			userId: user.id,
+			userInfo: user,
 			...(type === 'refreshToken' ? { tokenVersion: user.tokenVersion } : {})
 		},
 		type === 'accessToken'
