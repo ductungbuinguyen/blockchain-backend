@@ -9,12 +9,12 @@ export class InformationForCreateOrderResponse implements IMutationResponse {
 
   message?: string
 
-  @Field({nullable: true})
-	nonce?: number
+  @Field()
+	nonce?: string
 
-  @Field({nullable: true})
+  @Field()
 	buyerAddress?: string
 
-  @Field({nullable: true})
+  @Field()
 	currentBlockTimestamp?: number
 }

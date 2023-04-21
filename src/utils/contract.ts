@@ -10,7 +10,7 @@ import {
 import IEcommerceShop from '../ABIs/IEcommerceShop.json';
 import IEShopFactory from '../ABIs/IEShopFactory.json';
 import { User } from '../entities/User';
-import { id } from 'ethers/lib/utils';
+import { id, formatEther } from 'ethers/lib/utils';
 import { ActivityHistory } from '../entities/ActivityHistory';
 import { ActivityHistoryType } from '../types/ActivityHistoryType';
 import { publishActivityHistory } from './pubsub';
@@ -18,8 +18,9 @@ import QRCode from 'qrcode';
 
 const provider = new providers.WebSocketProvider(
 	process.env.BLOCKCHAIN_WS_PROVIDER ||
-		'wss://eth-goerli.g.alchemy.com/v2/uqHGkZMFr_B6Tk7ojrb3Na1dcAcGNC6k'
+		'wss://dex.binance.org/api/ws'
 );
+
 const wallet = new Wallet(
 	process.env.WALLET_PRIVATE_KEY ||
 		'71ef0e17f75ecb40b512b9f4aed33a5d6aba27649e50fecf0871b3fd35ae1a62',
@@ -28,7 +29,7 @@ const wallet = new Wallet(
 
 const eShopContractFactoryAddress =
 	process.env.E_COMMERCE_SHOP_FACTORY_ADDRESS ||
-	'0x9b5192E2C2554272454E91b0CC61bF2408d00fca';
+	'0xf5326e3eBc4CEEa311F7cD626b12bdD1sC94C4b1F';
 
 const eShopFactoryContract = new EthersContract(
 	eShopContractFactoryAddress,
@@ -40,7 +41,6 @@ const listenEventsBootstrap = async () => {
 	const contracts = await Contract.find({
 		relations: ['seller'],
 	});
-	console.log('contracts', contracts);
 	contracts.forEach((contract) => {
 		initEventListenerForContract(contract);
 	});
@@ -59,26 +59,28 @@ const listenEventsBootstrap = async () => {
 
 const onShopDeployed = async (event: any) => {
 	const { transactionHash } = event;
-	const { _instance, _seller_ } = event.args;
+	const { shop, seller: sellerAddress } = event.args;
 	const seller = await User.findOne({
 		where: {
-			metaMaskPublicKey: _seller_,
+			metaMaskPublicKey: sellerAddress,
 		},
 	});
+	console.log('seller', seller);
 	if (!seller) return;
 	const newContract = Contract.create({
-		address: _instance,
+		address: shop,
 		seller,
 	});
 	const result = await newContract.save();
+	console.log('result create new contract', result);
 	initEventListenerForContract(result);
 	const newActivity = await ActivityHistory.create({
-		owner: seller,
 		type: ActivityHistoryType.REGISTER_MERCHANT,
 		targetContract: result,
 		transactionHash,
 	});
 	const newActivityResult = await newActivity.save();
+	console.log('newActivityResult', newActivityResult);
 	publishActivityHistory({
 		userIds: [seller.id],
 		activityHistory: newActivityResult,
@@ -87,6 +89,7 @@ const onShopDeployed = async (event: any) => {
 
 const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 	const { transactionHash } = event;
+	console.log("event", event)
 	const { _id, _buyer, _price, _shipDeadline, _confirmDeadline, _orderTime } =
 		event.args;
 	const buyer = await User.findOne({
@@ -94,9 +97,16 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 			metaMaskPublicKey: _buyer,
 		},
 	});
+	console.log("orderBuyer", buyer)
 	if (!buyer) return;
+	const price = formatEther(_price)
 	const base64QrCode = await new Promise((resolve, reject) => {
-		QRCode.toDataURL('I love tacos!!', function (err, code) {
+		const qrCodeData = {
+			contractAddress: contract.address,
+			amount: price,
+			orderDecentralizedId: _id,
+		}
+		QRCode.toDataURL(JSON.stringify(qrCodeData), function (err, code) {
 			if (err) {
 				reject(reject);
 				return;
@@ -105,9 +115,11 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 		});
 	}) as string;
 
+	console.log("base64QrCode", base64QrCode)
+
 	const order = Order.create({
 		buyer,
-		price: Number(_price),
+		price,
 		contract,
 		confirmDeadline: Number(_confirmDeadline),
 		shipDeadline: Number(_shipDeadline),
@@ -117,8 +129,8 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 		base64QrCode
 	});
 	const result = await order.save();
+	console.log("result createOrder DB", result);
 	const newActivity = await ActivityHistory.create({
-		owner: contract.seller,
 		type: ActivityHistoryType.CREATE_ORDER,
 		targetOrder: result,
 		transactionHash,
@@ -142,14 +154,13 @@ const onPaidHandler = async (contract: Contract, event: any) => {
 		order.status = OrderStatus.PAID;
 		const result = await order.save();
 		const newActivity = await ActivityHistory.create({
-			owner: contract.seller,
 			type: ActivityHistoryType.PAY_ORDER,
 			targetOrder: result,
 			transactionHash,
 		});
 		const newActivityResult = await newActivity.save();
 		publishActivityHistory({
-			userIds: [contract.seller.id],
+			userIds: [order.buyer.id, contract.seller.id],
 			activityHistory: newActivityResult,
 		});
 	}
@@ -168,14 +179,63 @@ const onShippingHandler = async (contract: Contract, event: any) => {
 		order.status = OrderStatus.SHIPPING;
 		const result = await order.save();
 		const newActivity = await ActivityHistory.create({
-			owner: contract.seller,
 			type: ActivityHistoryType.PAY_ORDER,
 			targetOrder: result,
 			transactionHash,
 		});
 		const newActivityResult = await newActivity.save();
 		publishActivityHistory({
-			userIds: [order.buyer.id],
+			userIds: [order.buyer.id, contract.seller.id],
+			activityHistory: newActivityResult,
+		});
+	}
+};
+
+const onSellerConfirmShippedHandler = async (contract: Contract, event: any) => {
+	const { _id } = event.args;
+	const { transactionHash } = event;
+	const order = await Order.findOne({
+		where: {
+			decentralizedId: _id,
+		},
+		relations: ['buyer'],
+	});
+	if (order) {
+		order.isSellerConfirm = true
+		const result = await order.save();
+		const newActivity = await ActivityHistory.create({
+			type: ActivityHistoryType.SELLER_CONFIRM_ORDER_SHIPPED,
+			targetOrder: result,
+			transactionHash,
+		});
+		const newActivityResult = await newActivity.save();
+		publishActivityHistory({
+			userIds: [order.buyer.id, contract.seller.id],
+			activityHistory: newActivityResult,
+		});
+	}
+};
+
+const onBuyerConfirmShippedHandler = async (contract: Contract, event: any) => {
+	const { _id } = event.args;
+	const { transactionHash } = event;
+	const order = await Order.findOne({
+		where: {
+			decentralizedId: _id,
+		},
+		relations: ['buyer'],
+	});
+	if (order) {
+		order.isBuyerConfirm = true
+		const result = await order.save();
+		const newActivity = await ActivityHistory.create({
+			type: ActivityHistoryType.BUYER_CONFIRM_ORDER_SHIPPED,
+			targetOrder: result,
+			transactionHash,
+		});
+		const newActivityResult = await newActivity.save();
+		publishActivityHistory({
+			userIds: [order.buyer.id, contract.seller.id],
 			activityHistory: newActivityResult,
 		});
 	}
@@ -193,14 +253,13 @@ const onTimeoutHandler = async (contract: Contract, event: any) => {
 		order.status = OrderStatus.CANCELED;
 		const result = await order.save();
 		const newActivity = await ActivityHistory.create({
-			owner: contract.seller,
 			type: ActivityHistoryType.TIME_OUT_ORDER,
 			targetOrder: result,
 			transactionHash,
 		});
 		const newActivityResult = await newActivity.save();
 		publishActivityHistory({
-			userIds: [contract.seller.id],
+			userIds: [order.buyer.id, contract.seller.id],
 			activityHistory: newActivityResult,
 		});
 	}
@@ -219,7 +278,6 @@ const onCompleteHandler = async (contract: Contract, event: any) => {
 		order.status = OrderStatus.COMPLETE;
 		const result = await order.save();
 		const newActivity = await ActivityHistory.create({
-			owner: contract.seller,
 			type: ActivityHistoryType.ORDER_COMPLETED,
 			targetOrder: result,
 			transactionHash,
@@ -249,6 +307,16 @@ const contractEvents = [
 		id: 'shipping',
 		topics: [id('Shipping(bytes32)')],
 		handlerFunction: onShippingHandler,
+	},
+	{
+		id: 'sellerConfirmOrderShipped',
+		topics: [id('SellerComplete(bytes32, address)')],
+		handlerFunction: onSellerConfirmShippedHandler,
+	},
+	{
+		id: 'buyerConfirmOrderShipped',
+		topics: [id('BuyerComplete(bytes32, address)')],
+		handlerFunction: onBuyerConfirmShippedHandler,
 	},
 	{
 		id: 'timeout',
@@ -287,19 +355,26 @@ const createOrder = async ({
 	price,
 	shipDeadline,
 	signature,
+	name
 }: any) => {
 	const etherContract = new EthersContract(
 		contractAddress,
 		IEcommerceShop,
 		wallet
 	);
-	return await etherContract.createOrder([
+	console.log("contractAddress", contractAddress)
+	const systemFee = await etherContract.admin()
+	console.log("systemFee", systemFee)
+	const createOrderHash = await etherContract.createOrder([
 		buyerAddress,
 		BigInt(price),
 		BigInt(shipDeadline),
 		BigInt(nonce),
-		signature,
-	]);
+		name,
+	], signature
+	);
+	console.log("createOrderHash", createOrderHash)
+	return createOrderHash;
 };
 
 const getContractNonce = async (address: string) => {
@@ -319,10 +394,12 @@ const deployECommerceContract = async (merchantAddress: string) => {
 		IEShopFactory,
 		wallet
 	);
-	return await etherContract.deployEShop([
+	const result = await etherContract.deployEShop([
 		merchantAddress,
 		constants.AddressZero,
 	]);
+	console.log('result deploy eshop', result);
+	return result;
 };
 
 const generateMerchantSecretKey = () => {

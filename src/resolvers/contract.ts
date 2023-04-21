@@ -57,7 +57,7 @@ export class ContractResolver {
 			code: 200,
 			success: true,
 			buyerAddress,
-			nonce,
+			nonce: nonce.toString(),
 			currentBlockTimestamp: timestamp,
 		}
 	}
@@ -68,7 +68,7 @@ export class ContractResolver {
 		@Arg('createOrderInput') createOrderInput: CreateOrderInput,
 		@Ctx() { user }: Context
 	): Promise<CreateOrderMutationResponse> {
-		const { buyerAddress, nonce, price, shipDeadline, signature } =
+		const { buyerAddress, nonce, price, shipDeadline, signature, name } =
 			createOrderInput;
 		const existingUser = await User.findOne({
 			where: { id: user.userId },
@@ -80,17 +80,24 @@ export class ContractResolver {
 				success: false,
 			};
 		}
-		await createOrder({
+		const result = await createOrder({
 			contractAddress: existingUser?.contract?.address,
 			buyerAddress: buyerAddress,
 			nonce,
 			price,
 			shipDeadline,
 			signature,
+			name
 		});
+		if(result) {
+			return {
+				code: 200,
+				success: true,
+			};
+		}
 		return {
-			code: 200,
-			success: true,
-		};
+			code: 500,
+			success: false,
+		}
 	}
 }

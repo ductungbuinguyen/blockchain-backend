@@ -9,7 +9,6 @@ const router = express.Router()
 router.get('/', async (req, res) => {
 	const refreshToken =
 		req.cookies[process.env.REFRESH_TOKEN_COOKIE_NAME as string]
-
 	if (!refreshToken) return res.sendStatus(401)
 
 	try {
@@ -28,7 +27,6 @@ router.get('/', async (req, res) => {
 		}
 
 		sendRefreshToken(res, existingUser)
-		console.log("existingUser", existingUser)
 
 		return res.json({
 			success: true,

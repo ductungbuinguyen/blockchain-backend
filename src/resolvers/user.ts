@@ -1,24 +1,90 @@
 import { RegisterMerchantInput } from './../types/RegisterMerchantInput';
 import { RegisterInput } from '../types/RegisterInput';
-import { Arg, Ctx, ID, Mutation, Query, Resolver, UseMiddleware } from 'type-graphql';
+import {
+	Arg,
+	Ctx,
+	ID,
+	Mutation,
+	Query,
+	Resolver,
+	UseMiddleware,
+} from 'type-graphql';
 import { User } from '../entities/User';
 import argon2 from 'argon2';
 import { UserMutationResponse } from '../types/UserMutationResponse';
 import { LoginInput } from '../types/LoginInput';
 import { createToken, sendRefreshToken } from '../utils/auth';
 import { Context } from '../types/Context';
-import { MutationResponse } from '../types/MutationResponse';
 import { MerchantMetaData } from '../entities/MerchantMetaData';
-import { deployECommerceContract, generateMerchantSecretKey } from '../utils/contract';
+import { generateMerchantSecretKey } from '../utils/contract';
 import { checkAuth } from '../middleware/checkAuth';
+import { MerchantMutationResponse } from '../types/MerchantMutationResponse';
+import { UserInfoMetaData } from '../types/UserInfoMetaData';
 
 @Resolver()
 export class UserResolver {
-
 	@Query((_return) => [User])
 	@UseMiddleware(checkAuth)
 	async users(): Promise<User[]> {
 		return await User.find();
+	}
+
+	@Query((_return) => UserInfoMetaData)
+	@UseMiddleware(checkAuth)
+	async user(@Ctx() { user }: Context): Promise<UserInfoMetaData | undefined> {
+		const currentUser = await User.findOne({
+			where: { id: user.userId },
+			relations: [
+				'contract',
+				'contract.activityHistory',
+				'contract.activityHistory.targetContract',
+				'contract.orders',
+				'contract.orders.buyer',
+				'merchantMetaData',
+				'ordersAsBuyer',
+				'ordersAsBuyer.activityHistories',
+				'ordersAsBuyer.activityHistories.targetOrder',
+				'ordersAsBuyer.contract',
+				'ordersAsBuyer.contract.seller',
+				'activityHistoriesAsSender',
+				'activityHistoriesAsSender.sender',
+				'activityHistoriesAsSender.receiver',
+				'activityHistoriesAsReceiver',
+				'activityHistoriesAsReceiver.sender',
+				'activityHistoriesAsReceiver.receiver',
+			],
+		});
+		if (!currentUser) return undefined;
+		const {
+			activityHistoriesAsReceiver,
+			activityHistoriesAsSender,
+			base64Avatar,
+			contract,
+			email,
+			id,
+			merchantMetaData,
+			metaMaskPublicKey,
+			ordersAsBuyer,
+			fullName,
+			gender,
+			identityCode,
+			phoneNumber,
+		} = currentUser;
+		return {
+			activityHistoriesAsReceiver,
+			activityHistoriesAsSender,
+			base64Avatar,
+			contract,
+			email,
+			id,
+			merchantMetaData,
+			metaMaskPublicKey,
+			ordersAsBuyer,
+			fullName,
+			gender,
+			identityCode,
+			phoneNumber,
+		};
 	}
 
 	@Mutation((_return) => UserMutationResponse)
@@ -83,7 +149,6 @@ export class UserResolver {
 				message: 'Incorrect password',
 			};
 		}
-		console.log('existingUser', existingUser)
 
 		sendRefreshToken(res, existingUser);
 
@@ -124,27 +189,23 @@ export class UserResolver {
 		return { code: 200, success: true };
 	}
 
-	@Mutation((_return) => MutationResponse)
+	@Mutation((_return) => MerchantMutationResponse)
+	@UseMiddleware(checkAuth)
 	async registerMerchant(
 		@Arg('registerMerchantInput')
 		registerMerchantInput: RegisterMerchantInput,
 		@Ctx() { user }: Context
-	): Promise<MutationResponse> {
+	): Promise<MerchantMutationResponse> {
 		const existingUser = await User.findOne({
 			where: { id: user.userId },
 			relations: ['contract'],
 		});
+		console.log('existingUser register merchant', existingUser);
 		if (!existingUser) {
 			return {
 				code: 400,
 				success: false,
 			};
-		}
-
-		const deployResult = await deployECommerceContract(existingUser.metaMaskPublicKey)
-		if(!deployResult) return {
-			code: 500,
-			success: false,
 		}
 
 		const secretKey = generateMerchantSecretKey();
@@ -153,15 +214,18 @@ export class UserResolver {
 			...registerMerchantInput,
 			owner: existingUser,
 			merchantSecretKey: secretKey,
-		})
-		const createMetadataResult = await existingUserMetadata.save()
-		if(!createMetadataResult) return {
-			code: 500,
-			success: false,
-		}
+		});
+		const createMetadataResult = await existingUserMetadata.save();
+		console.log('createMetadataResult', createMetadataResult);
+		if (!createMetadataResult)
+			return {
+				code: 500,
+				success: false,
+			};
 		return {
 			code: 200,
 			success: true,
-		}
+			merchantMetaData: createMetadataResult,
+		};
 	}
 }

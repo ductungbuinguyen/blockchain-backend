@@ -1,26 +1,40 @@
 import { CreateActivityHistoryInput } from './../types/CreateActivityHistoryInput';
 import { ActivityHistoryMutationResponse } from './../types/ActivityHistoryMutationResponse';
-import { Arg, Ctx, Mutation, Resolver, Root, Subscription } from 'type-graphql';
+import {
+	Arg,
+	Ctx,
+	Mutation,
+	Resolver,
+	Root,
+	Subscription,
+	UseMiddleware,
+} from 'type-graphql';
 import { Context } from '../types/Context';
 import { User } from '../entities/User';
 import { ActivityHistory } from '../entities/ActivityHistory';
 import { ActivityHistoryPayload } from '../types/ActivityHistoryPayload';
 import { publishActivityHistory } from '../utils/pubsub';
+import { checkAuth } from '../middleware/checkAuth';
 
 @Resolver()
 export class ActivityHistoryResolver {
 	@Mutation((_return) => ActivityHistoryMutationResponse)
+	@UseMiddleware(checkAuth)
 	async createActivityHistory(
-		@Arg('createOrderInput')
+		@Arg('createActivityHistoryInput')
 		createActivityHistoryInput: CreateActivityHistoryInput,
 		@Ctx() { user }: Context
 	): Promise<ActivityHistoryMutationResponse> {
-		const ownerId = user.userId;
-		const { type, destinationAddress, destinationUserId, transactionHash, targetOrderId } =
-			createActivityHistoryInput;
+		const senderId = user.userId;
+		const {
+			type,
+			destinationAddress,
+			destinationUserId,
+			transactionHash,
+			amount,
+		} = createActivityHistoryInput;
 		const existingUser = await User.findOne({
-			where: { id: ownerId },
-			relations: ['contract'],
+			where: { id: senderId },
 		});
 		if (!existingUser) {
 			return {
@@ -29,41 +43,58 @@ export class ActivityHistoryResolver {
 			};
 		}
 		const newActivity = ActivityHistory.create({
-			owner: {
-				id: ownerId,
+			sender: {
+				id: senderId,
 			},
-			destinationAddress,
 			type,
+			amount,
 			transactionHash,
-			destinationUser: {
-				id: destinationUserId,
-			},
-			targetOrder: {
-				id: targetOrderId,
-			}
+			...(destinationUserId
+				? {
+						receiver: {
+							id: destinationUserId,
+						},
+				  }
+				: {
+						receiverAddress: destinationAddress,
+				  }),
 		});
 		const result = await newActivity.save();
-		publishActivityHistory({
-			userIds: [destinationUserId],
-			activityHistory: result
-		})
+		const newActivityWithRelations = await ActivityHistory.findOne(result.id, {
+			relations: ['sender', 'receiver'],
+		});
+		if (!newActivityWithRelations)
+			return {
+				code: 500,
+				success: false,
+			};
+		if(destinationUserId) {
+			publishActivityHistory({
+				userIds: [],
+				activityHistory: newActivityWithRelations,
+			});
+		}
 		return {
 			code: 200,
 			success: true,
-			activityHistory: result,
+			activityHistory: newActivityWithRelations,
 		};
 	}
 
 	@Subscription({
-		topics: "ACTIVITY_HISTORY",
+		topics: 'ACTIVITY_HISTORY',
 		filter: ({ payload, context }) => {
-			if(payload?.userIds?.includes(context?.user.userId)) return true;
+			console.log('payload', payload);
+			console.log('context', context);
+			const checker = payload?.userIds?.includes(context?.user.userId);
+			console.log('checker', checker);
+			if (checker) return true;
 			return false;
-		}
+		},
 	})
-	needToRefreshData(
-		@Root() activityHistoryPayload: ActivityHistoryPayload,
+	activityHistory(
+		@Root() activityHistoryPayload: ActivityHistoryPayload
 	): ActivityHistory {
-		return activityHistoryPayload.activityHistory
+		return activityHistoryPayload.activityHistory;
 	}
 }

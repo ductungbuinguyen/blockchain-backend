@@ -31,7 +31,7 @@ export class User extends BaseEntity {
 		enum: Gender,
 		nullable: true,
 	})
-	gender?: string;
+	gender?: Gender;
 
 	@Field()
 	@Column({
@@ -65,12 +65,12 @@ export class User extends BaseEntity {
 	@Column({ default: 0 })
 	tokenVersion: number;
 
-	@Field(() => [Contract])
+	@Field(() => Contract)
 	@OneToOne(() => Contract, (contract) => contract.seller)
 	@JoinColumn()
 	contract: Contract;
 
-	@Field(() => [MerchantMetaData])
+	@Field(() => MerchantMetaData)
 	@OneToOne(
 		() => MerchantMetaData,
 		(merchantMetaData) => merchantMetaData.owner
@@ -83,16 +83,16 @@ export class User extends BaseEntity {
 	ordersAsBuyer: Order[];
 
 	@Field(() => [ActivityHistory])
-	@OneToMany(() => ActivityHistory, (activity) => activity.owner)
-	activityHistoriesAsOwner: ActivityHistory[]
+	@OneToMany(() => ActivityHistory, (activity) => activity.sender)
+	activityHistoriesAsSender: ActivityHistory[]
 
 	@Field(() => [ActivityHistory])
-	@OneToMany(() => ActivityHistory, (activity) => activity.owner)
-	activityHistoriesAsDestination: ActivityHistory[]
+	@OneToMany(() => ActivityHistory, (activity) => activity.receiver)
+	activityHistoriesAsReceiver: ActivityHistory[]
 
 	@Field()
 	@Column({
 		nullable: true,
 	})
-	Base64Avatar: string
+	base64Avatar: string
 }

@@ -3,18 +3,18 @@ import { ActivityHistoryType } from "./ActivityHistoryType";
 
 @InputType()
 export class CreateActivityHistoryInput {
-  @Field({nullable: false})
+  @Field(() => ActivityHistoryType)
   type: ActivityHistoryType
 
   @Field()
-  destinationAddress: string
+  destinationAddress?: string
 
   @Field()
-  destinationUserId: number 
+  destinationUserId?: number 
+
+  @Field()
+  amount: number
 
   @Field()
   transactionHash: string
-
-  @Field()
-  targetOrderId: number
 }

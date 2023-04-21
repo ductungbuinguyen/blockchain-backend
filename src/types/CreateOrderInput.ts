@@ -9,6 +9,9 @@ export class CreateOrderInput {
 	price: number
 
 	@Field()
+	name: string
+
+	@Field()
 	shipDeadline: number
 
 	@Field()

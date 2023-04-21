@@ -19,9 +19,8 @@ export class Order extends BaseEntity {
   @Field()
 	@Column({
 		nullable: true,
-		type: 'bigint',
 	})
-	price?: number
+	price?: string
 
   @Field()
 	@Column({
@@ -37,12 +36,12 @@ export class Order extends BaseEntity {
 	})
 	confirmDeadline?: number
 
-  @Field(() => [User])
+  @Field(() => User)
 	@ManyToOne(() => User, (user) => user.ordersAsBuyer)
   buyer: User
 
-  @Field(() => [Contract])
-	@ManyToOne(() => Contract, (contract) => contract.seller)
+  @Field(() => Contract)
+	@ManyToOne(() => Contract, (contract) => contract.orders)
   contract: Contract
 
 	@Field(() => OrderStatus)
@@ -69,4 +68,28 @@ export class Order extends BaseEntity {
 		nullable: true,
 	})
 	base64QrCode: string;
+
+	@Field()
+  @Column('timestamp without time zone', {
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  creationTime: Date;
+
+	@Field()
+	@Column({
+		nullable: true,
+	})
+	name: string;
+
+	@Field()
+	@Column({
+		nullable: true,
+	})
+	isSellerConfirm: boolean;
+
+	@Field()
+	@Column({
+		nullable: true,
+	})
+	isBuyerConfirm: boolean;
 }

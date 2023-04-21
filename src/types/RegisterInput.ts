@@ -10,7 +10,7 @@ export class RegisterInput {
 	password: string
 
 	@Field(() => Gender)
-	gender: string
+	gender: Gender
 
 	@Field()
 	fullName: string

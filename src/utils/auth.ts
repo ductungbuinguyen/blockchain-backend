@@ -6,14 +6,13 @@ export const createToken = (type: 'accessToken' | 'refreshToken', user: User) =>
 	sign(
 		{
 			userId: user.id,
-			userInfo: user,
 			...(type === 'refreshToken' ? { tokenVersion: user.tokenVersion } : {})
 		},
 		type === 'accessToken'
 			? (process.env.ACCESS_TOKEN_SECRET as Secret)
 			: (process.env.REFRESH_TOKEN_SECRET as Secret),
 		{
-			expiresIn: type === 'accessToken' ? '10 days' : '60m'
+			expiresIn: type === 'accessToken' ? '10 days' : '10 days'
 		}
 	)
 

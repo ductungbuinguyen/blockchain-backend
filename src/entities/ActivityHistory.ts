@@ -14,26 +14,30 @@ export class ActivityHistory extends BaseEntity {
 	id!: number
 
   @Field(() => User)
-  @ManyToOne(() => User, (user) => user.activityHistoriesAsOwner)
-  @JoinColumn({ name: "ownerUserId" })
-  owner: User
+  @ManyToOne(() => User, (user) => user.activityHistoriesAsSender)
+  @JoinColumn()
+  sender: User
 
-  @Field()
-  @Column()
+  @Field(() => ActivityHistoryType)
+  @Column({
+		nullable: true,
+		type: "enum",
+		enum: ActivityHistoryType,
+	})
   type: ActivityHistoryType;
 
   @Field(() => User)
-  @ManyToOne(() => User, (user) => user.activityHistoriesAsDestination, {nullable: true})
-  @JoinColumn({ name: "destinationUserId" })
-  destinationUser: User
+  @ManyToOne(() => User, (user) => user.activityHistoriesAsReceiver, {nullable: true})
+  @JoinColumn()
+  receiver: User
 
   @Field()
   @Column({nullable: true})
-  destinationAddress: string
+  receiverAddress: string
 
   @Field(() => Order)
   @ManyToOne(() => Order, (order) => order.activityHistories, { nullable: true })
-  @JoinColumn({ name: "targetOrderId" })
+  @JoinColumn()
   targetOrder: Order
 
   @Field(() => Contract)
@@ -44,6 +48,13 @@ export class ActivityHistory extends BaseEntity {
   @Field()
   @Column()
   transactionHash: string
+
+  @Field()
+  @Column({
+    type: 'decimal',
+    nullable: true,
+  })
+  amount: number
 
   @Field()
   @Column('timestamp without time zone', {
