@@ -40,12 +40,14 @@ export class UserResolver {
 				'contract.activityHistory.targetContract',
 				'contract.orders',
 				'contract.orders.buyer',
+				'contract.orders.activityHistories',
 				'merchantMetaData',
 				'ordersAsBuyer',
 				'ordersAsBuyer.activityHistories',
 				'ordersAsBuyer.activityHistories.targetOrder',
 				'ordersAsBuyer.contract',
 				'ordersAsBuyer.contract.seller',
+				'ordersAsBuyer.contract.seller.merchantMetaData',
 				'activityHistoriesAsSender',
 				'activityHistoriesAsSender.sender',
 				'activityHistoriesAsSender.receiver',
@@ -128,6 +130,7 @@ export class UserResolver {
 		@Ctx() { res }: Context
 	): Promise<UserMutationResponse> {
 		const existingUser = await User.findOne({ email });
+		console.log("existingUser", existingUser)
 
 		if (!existingUser) {
 			return {
@@ -141,6 +144,8 @@ export class UserResolver {
 			existingUser.password,
 			password
 		);
+
+		console.log("isPasswordValid", isPasswordValid)
 
 		if (!isPasswordValid) {
 			return {

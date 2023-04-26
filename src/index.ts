@@ -42,7 +42,7 @@ const main = async () => {
 	const app = express();
 	const pubSub = pubsub;
 
-	app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+	app.use(cors({ origin: ['http://192.168.1.9:3000', 'http://localhost:3000', 'https://localhost:3000', 'https://ea7e-171-252-155-13.ngrok-free.app'], credentials: true }));
 	app.use(cookieParser());
 
 	app.use('/refresh_token', refreshTokenRouter);
@@ -59,6 +59,7 @@ const main = async () => {
 	const wsServer = new WebSocketServer({
 		server: httpServer,
 		path: '/graphql',
+		maxPayload: 99999999999
 	});
 
 	const serverCleanup = useServer(
@@ -105,7 +106,7 @@ const main = async () => {
 	apolloServer.applyMiddleware({
 		app,
 		path: '/graphql',
-		cors: { origin: 'http://localhost:3000', credentials: true },
+		cors: { origin: ['http://192.168.1.9:3000', 'http://localhost:3000', 'https://localhost:3000', 'https://ea7e-171-252-155-13.ngrok-free.app'], credentials: true},
 	});
 
 	app.get(

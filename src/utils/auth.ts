@@ -17,6 +17,7 @@ export const createToken = (type: 'accessToken' | 'refreshToken', user: User) =>
 	)
 
 export const sendRefreshToken = (res: Response, user: User) => {
+	console.log("in sendRefreshToken func")
 	res.cookie(
 		process.env.REFRESH_TOKEN_COOKIE_NAME as string,
 		createToken('refreshToken', user),

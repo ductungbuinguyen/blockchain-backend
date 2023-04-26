@@ -32,11 +32,11 @@ export const checkAuth: MiddlewareFn<Context> = ({ context }, next) => {
 
 export const getDynamicContextWebSocket = async (ctx: any) => {
 	try {
-		console.log("ctx", ctx);
+		// console.log("ctx", ctx);
 		const auth = ctx.connectionParams.authorization
-		console.log("auth", auth)
+		// console.log("auth", auth)
 		const accessToken = auth && auth.split(' ')[1]
-		console.log("accessToken", accessToken)
+		// console.log("accessToken", accessToken)
 		if (!accessToken)
 		throw new AuthenticationError(
 			'Not authenticated to perform GraphQL operations'
@@ -45,7 +45,7 @@ export const getDynamicContextWebSocket = async (ctx: any) => {
 			accessToken,
 			process.env.ACCESS_TOKEN_SECRET as Secret
 		) as UserAuthPayload
-		console.log("decodedUser", decodedUser)
+		// console.log("decodedUser", decodedUser)
 		return {
 			user: decodedUser
 		}

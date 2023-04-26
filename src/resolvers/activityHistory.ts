@@ -70,7 +70,7 @@ export class ActivityHistoryResolver {
 			};
 		if(destinationUserId) {
 			publishActivityHistory({
-				userIds: [],
+				userIds: [destinationUserId],
 				activityHistory: newActivityWithRelations,
 			});
 		}
@@ -95,6 +95,7 @@ export class ActivityHistoryResolver {
 	activityHistory(
 		@Root() activityHistoryPayload: ActivityHistoryPayload
 	): ActivityHistory {
+		console.log("activityHistoryPayload",activityHistoryPayload.activityHistory)
 		return activityHistoryPayload.activityHistory;
 	}
 }

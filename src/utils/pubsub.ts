@@ -1,5 +1,7 @@
 import { PubSub } from 'graphql-subscriptions';
 import { ActivityHistoryPayload } from '../types/ActivityHistoryPayload';
+// import { ActivityHistory } from '../entities/ActivityHistory';
+// import { ActivityHistoryType } from '../types/ActivityHistoryType';
 
 const pubsub = new PubSub()
 
@@ -14,10 +16,11 @@ const publishActivityHistory = ({
 }
 
 // setInterval(async () => {
-//   // console.log('in here')
+//   console.log('in here')
 //   const newActivity = await ActivityHistory.create({
-// 		type: ActivityHistoryType.REGISTER_MERCHANT,
+// 		type: ActivityHistoryType.ORDER_COMPLETED,
 // 		transactionHash: "test test",
+
 // 	});
 //   pubsub.publish('ACTIVITY_HISTORY', { 
 //     activityHistory: newActivity,

@@ -61,4 +61,10 @@ export class ActivityHistory extends BaseEntity {
     default: () => 'CURRENT_TIMESTAMP',
   })
   creationTime: Date;
+
+  @Field()
+  @Column({
+    nullable: true
+  })
+  blockNumber: number;
 }
