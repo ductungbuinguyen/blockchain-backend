@@ -1,6 +1,6 @@
 require('dotenv').config();
 import 'reflect-metadata';
-import express from 'express';
+import express, { json } from 'express';
 import { createConnection } from 'typeorm';
 import { User } from './entities/User';
 import { createServer } from 'http';
@@ -44,7 +44,7 @@ const main = async () => {
 
 	app.use(cors({ origin: ['http://192.168.1.9:3000', 'http://localhost:3000', 'https://localhost:3000', 'https://ea7e-171-252-155-13.ngrok-free.app'], credentials: true }));
 	app.use(cookieParser());
-
+	app.use(json({ limit: 99999999999 }))
 	app.use('/refresh_token', refreshTokenRouter);
 
 	const httpServer = createServer(app);

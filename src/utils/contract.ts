@@ -349,44 +349,44 @@ const contractEvents = [
 ];
 
 const initBlocksSync = async () => {
-	let blockNumber = await jsonRpcProvider.getBlockNumber()
-	let eventFilter = eShopFactoryContract.filters.ShopDeployed()
-	// const events = await eShopJsonRpcFactoryContract.queryFilter(eventFilter, 29149877, 29149933)
-	// console.log("events", await getCurrentBlockTimestamp())
-	setInterval(async () => {
-		const newTransactionHashes = (await ActivityHistory.getRepository().find({
-			where: {
-				blockNumber: MoreThan(blockNumber)
-			},
-			select: ["transactionHash"]
-		})).map(event => event.transactionHash)
-		const currentBlockNumber = await jsonRpcProvider.getBlockNumber()
-		const events = await eShopJsonRpcFactoryContract.queryFilter(eventFilter, blockNumber, currentBlockNumber)
-		if(events.length > 0) {
-			const missedEvents = events.filter(event => !newTransactionHashes.includes(event.transactionHash))
-			missedEvents.forEach(event => onShopDeployed(event))
-		}
-		const contracts = await Contract.find({
-			relations: ['seller'],
-		});
-		contracts.forEach(contract => {
-			const { address } = contract;
-			const etherContract = new EthersContract(address, IEcommerceShop, jsonRpcProvider);
-			contractEvents.forEach(async (contractEvent) => {
-				const events = await etherContract.queryFilter({
-					address,
-					topics: contractEvent.topics
-				}, blockNumber, currentBlockNumber)
-				console.log("events", events)
-				if(events.length > 0) {
-					const missedEvents = events.filter(event => !newTransactionHashes.includes(event.transactionHash))
-					console.log("missedEvents", missedEvents)
-					missedEvents.forEach(event => contractEvent.handlerFunction(contract, event))
-				}
-			})
-		})
-		blockNumber = currentBlockNumber
-	}, 30000)
+	// let blockNumber = await jsonRpcProvider.getBlockNumber()
+	// let eventFilter = eShopFactoryContract.filters.ShopDeployed()
+	// // const events = await eShopJsonRpcFactoryContract.queryFilter(eventFilter, 29149877, 29149933)
+	// // console.log("events", await getCurrentBlockTimestamp())
+	// setInterval(async () => {
+	// 	const newTransactionHashes = (await ActivityHistory.getRepository().find({
+	// 		where: {
+	// 			blockNumber: MoreThan(blockNumber)
+	// 		},
+	// 		select: ["transactionHash"]
+	// 	})).map(event => event.transactionHash)
+	// 	const currentBlockNumber = await jsonRpcProvider.getBlockNumber()
+	// 	const events = await eShopJsonRpcFactoryContract.queryFilter(eventFilter, blockNumber, currentBlockNumber)
+	// 	if(events.length > 0) {
+	// 		const missedEvents = events.filter(event => !newTransactionHashes.includes(event.transactionHash))
+	// 		missedEvents.forEach(event => onShopDeployed(event))
+	// 	}
+	// 	const contracts = await Contract.find({
+	// 		relations: ['seller'],
+	// 	});
+	// 	contracts.forEach(contract => {
+	// 		const { address } = contract;
+	// 		const etherContract = new EthersContract(address, IEcommerceShop, jsonRpcProvider);
+	// 		contractEvents.forEach(async (contractEvent) => {
+	// 			const events = await etherContract.queryFilter({
+	// 				address,
+	// 				topics: contractEvent.topics
+	// 			}, blockNumber, currentBlockNumber)
+	// 			console.log("events", events)
+	// 			if(events.length > 0) {
+	// 				const missedEvents = events.filter(event => !newTransactionHashes.includes(event.transactionHash))
+	// 				console.log("missedEvents", missedEvents)
+	// 				missedEvents.forEach(event => contractEvent.handlerFunction(contract, event))
+	// 			}
+	// 		})
+	// 	})
+	// 	blockNumber = currentBlockNumber
+	// }, 30000)
 }
 
 const initEventListenerForContract = async (contract: Contract) => {
@@ -461,7 +461,7 @@ const deployECommerceContract = async (merchantAddress: string) => {
 	return result;
 };
 
-const generateMerchantSecretKey = () => {
+const generateRandomKey = () => {
 	let result = '';
 	const characters =
 		'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -481,5 +481,5 @@ export {
 	getContractNonce,
 	getCurrentBlockTimestamp,
 	deployECommerceContract,
-	generateMerchantSecretKey,
+	generateRandomKey,
 };

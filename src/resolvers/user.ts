@@ -1,3 +1,5 @@
+import { uploadToS3Bucket } from './../utils/s3';
+import { UpdatePasswordInput } from './../types/UpdatePasswordInput';
 import { RegisterMerchantInput } from './../types/RegisterMerchantInput';
 import { RegisterInput } from '../types/RegisterInput';
 import {
@@ -16,10 +18,15 @@ import { LoginInput } from '../types/LoginInput';
 import { createToken, sendRefreshToken } from '../utils/auth';
 import { Context } from '../types/Context';
 import { MerchantMetaData } from '../entities/MerchantMetaData';
-import { generateMerchantSecretKey } from '../utils/contract';
+import { generateRandomKey } from '../utils/contract';
 import { checkAuth } from '../middleware/checkAuth';
 import { MerchantMutationResponse } from '../types/MerchantMutationResponse';
 import { UserInfoMetaData } from '../types/UserInfoMetaData';
+import { UpdateUserInfoInput } from '../types/UpdateUserInfoInput';
+import { UpdateUserMerchantMetadataInput } from '../types/UpdateUserMerchantMetadataInput';
+import { MerchantMetadataMutationResponse } from '../types/MerchantMetadataMutationResponse';
+import { MutationResponse } from '../types/MutationResponse';
+import { UserInfoMetaDataMutationResponse } from '../types/UserInfoMetaDataMutationResponse';
 
 @Resolver()
 export class UserResolver {
@@ -56,6 +63,7 @@ export class UserResolver {
 				'activityHistoriesAsReceiver.receiver',
 			],
 		});
+		console.log("currentUser", currentUser)
 		if (!currentUser) return undefined;
 		const {
 			activityHistoriesAsReceiver,
@@ -87,6 +95,132 @@ export class UserResolver {
 			identityCode,
 			phoneNumber,
 		};
+	}
+
+	@Mutation((_return) => UserInfoMetaDataMutationResponse)
+	@UseMiddleware(checkAuth)
+	async updateUserInfo(
+		@Arg('updateUserInfoInput')
+		updateUserInfoInput: UpdateUserInfoInput,
+		@Ctx() { user }: Context
+	): Promise<UserInfoMetaDataMutationResponse> {
+		const { email, fullName, gender, identityCode, phoneNumber, base64Avatar } = updateUserInfoInput
+		const existingUser = await User.findOne({
+			where: { id: user.userId },
+		});
+		if (!existingUser) {
+			return {
+				code: 400,
+				success: false,
+			};
+		}
+		existingUser.email = email ? email : existingUser?.email;
+		existingUser.fullName = fullName ? fullName : existingUser?.fullName,
+		existingUser.gender = gender ? gender : existingUser?.gender,
+		existingUser.identityCode = identityCode ? identityCode : existingUser?.identityCode,
+		existingUser.phoneNumber = phoneNumber ? phoneNumber : existingUser?.phoneNumber
+		existingUser.base64Avatar = await uploadToS3Bucket(base64Avatar)
+		console.log("link", existingUser.base64Avatar)
+		
+		const result = await User.save(existingUser)
+		if(!result) return {
+			code: 400,
+			success: false,
+		};
+		return {
+			code: 200,
+			success: true,
+			user: result
+		}
+	}
+
+	@Mutation((_return) => MerchantMetadataMutationResponse)
+	@UseMiddleware(checkAuth)
+	async updateUserMerchantMetadata(
+		@Arg('updateUserMerchantMetadataInput')
+		updateUserMerchantMetadataInput: UpdateUserMerchantMetadataInput,
+		@Ctx() { user }: Context
+	): Promise<MerchantMetadataMutationResponse> {
+		const { businessField, companyIdentify, companyName, note, storeLocation, websiteUrl } = updateUserMerchantMetadataInput
+		const existingUser = await User.findOne({
+			where: { id: user.userId },
+			relations: ['merchantMetaData']
+		});
+		if (!existingUser) {
+			return {
+				code: 400,
+				success: false,
+			};
+		}
+		const merchantMetaData = await MerchantMetaData.findOne({
+			where: { id: existingUser.merchantMetaData.id },
+		})
+		if(!merchantMetaData) return {
+			code: 400,
+			success: false,
+		};
+		merchantMetaData.businessField = businessField ? businessField : merchantMetaData.businessField
+		merchantMetaData.companyName = companyName ? companyName : merchantMetaData.companyName
+		merchantMetaData.companyIdentify = companyIdentify ? companyIdentify : merchantMetaData.companyIdentify
+		merchantMetaData.storeLocation = storeLocation ? storeLocation : merchantMetaData.storeLocation
+		merchantMetaData.websiteUrl = websiteUrl ? websiteUrl : merchantMetaData.websiteUrl
+		merchantMetaData.note = note ? note : merchantMetaData.note
+		
+		const result = await MerchantMetaData.save(merchantMetaData)
+		if(!result) return {
+			code: 400,
+			success: false,
+		};
+		return {
+			code: 200,
+			success: true,
+			merchantMetaData: result
+		}
+	}
+
+	@Mutation((_return) => MutationResponse)
+	@UseMiddleware(checkAuth)
+	async updatePassword(
+		@Arg('updatePasswordInput')
+		updatePasswordInput: UpdatePasswordInput,
+		@Ctx() { user }: Context
+	): Promise<MutationResponse> {
+		const { newPassword, oldPassword, reEnterNewPassword } = updatePasswordInput
+		const existingUser = await User.findOne({
+			where: { id: user.userId },
+		});
+		if (!existingUser) {
+			return {
+				code: 400,
+				success: false,
+			};
+		}
+
+		if(newPassword !== reEnterNewPassword) {
+			return {
+				code: 400,
+				success: false,
+			}
+		}
+		const isPasswordValid = await argon2.verify(
+			existingUser.password,
+			oldPassword
+		);
+		if(!isPasswordValid) return {
+			code: 400,
+			success: false
+		}
+		const hashedPassword = await argon2.hash(newPassword)
+		existingUser.password = hashedPassword
+		const result = User.save(existingUser)
+		if(!result) return {
+			code: 500,
+			success: false
+		}
+		return {
+			code: 200,
+			success: true,
+		}
 	}
 
 	@Mutation((_return) => UserMutationResponse)
@@ -167,11 +301,11 @@ export class UserResolver {
 	}
 
 	@Mutation((_return) => UserMutationResponse)
+	@UseMiddleware(checkAuth)
 	async logout(
-		@Arg('userId', (_type) => ID) userId: number,
-		@Ctx() { res }: Context
+		@Ctx() { res, user }: Context
 	): Promise<UserMutationResponse> {
-		const existingUser = await User.findOne(userId);
+		const existingUser = await User.findOne(user?.userId);
 
 		if (!existingUser) {
 			return {
@@ -213,7 +347,7 @@ export class UserResolver {
 			};
 		}
 
-		const secretKey = generateMerchantSecretKey();
+		const secretKey = generateRandomKey();
 
 		const existingUserMetadata = MerchantMetaData.create({
 			...registerMerchantInput,
