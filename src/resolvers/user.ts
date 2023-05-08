@@ -5,7 +5,6 @@ import { RegisterInput } from '../types/RegisterInput';
 import {
 	Arg,
 	Ctx,
-	ID,
 	Mutation,
 	Query,
 	Resolver,

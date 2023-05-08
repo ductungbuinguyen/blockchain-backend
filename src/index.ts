@@ -13,6 +13,8 @@ import {
 import { UserResolver } from './resolvers/user';
 import { Context } from './types/Context';
 import refreshTokenRouter from './routes/refreshTokenRouter';
+import informationForCreateOrderInput from './routes/informationForCreateOrderInput';
+import createOrder from './routes/createOrder';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { Order } from './entities/Order';
@@ -29,15 +31,24 @@ import { ActivityHistory } from './entities/ActivityHistory';
 import { ActivityHistoryResolver } from './resolvers/activityHistory';
 
 const main = async () => {
-	await createConnection({
+	console.log('Starting')
+	console.log('host', process.env.DB_HOST)
+	console.log('host', process.env.DB_NAME)
+	console.log('host', process.env.DB_USERNAME)
+	console.log('host', process.env.DB_PASSWORD)
+	const result = await createConnection({
 		type: 'postgres',
+		host: process.env.DB_HOST,
 		database: process.env.DB_NAME,
 		username: process.env.DB_USERNAME,
 		password: process.env.DB_PASSWORD,
+		port: Number(process.env.DB_PORT),
 		logging: true,
 		synchronize: true,
 		entities: [User, Order, Contract, MerchantMetaData, ActivityHistory],
 	});
+
+	console.log("connect DB result", result)
 
 	const app = express();
 	const pubSub = pubsub;
@@ -46,6 +57,8 @@ const main = async () => {
 	app.use(cookieParser());
 	app.use(json({ limit: 99999999999 }))
 	app.use('/refresh_token', refreshTokenRouter);
+	app.use('/information_for_create_order_input', informationForCreateOrderInput);
+	app.use('/create_order', createOrder);
 
 	const httpServer = createServer(app);
 
