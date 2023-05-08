@@ -53,7 +53,7 @@ const main = async () => {
 	const app = express();
 	const pubSub = pubsub;
 
-	app.use(cors({ origin: ['http://localhost:3000', 'https://localhost:3000'], credentials: true }));
+	app.use(cors({ origin: ['http://localhost:3000', 'https://localhost:3000', 'https://thesisblockchain.tech'], credentials: true }));
 	app.use(cookieParser());
 	app.use(json({ limit: 99999999999 }))
 	app.use('/refresh_token', refreshTokenRouter);
@@ -119,7 +119,7 @@ const main = async () => {
 	apolloServer.applyMiddleware({
 		app,
 		path: '/graphql',
-		cors: { origin: ['http://localhost:3000', 'https://localhost:3000'], credentials: true},
+		cors: { origin: ['http://localhost:3000', 'https://localhost:3000', 'https://thesisblockchain.tech'], credentials: true},
 	});
 
 	app.get(
