@@ -62,7 +62,7 @@ export class UserResolver {
 				'activityHistoriesAsReceiver.receiver',
 			],
 		});
-		console.log("currentUser", currentUser)
+		// console.log("currentUser", currentUser)
 		if (!currentUser) return undefined;
 		const {
 			activityHistoriesAsReceiver,
@@ -263,7 +263,6 @@ export class UserResolver {
 		@Ctx() { res }: Context
 	): Promise<UserMutationResponse> {
 		const existingUser = await User.findOne({ email });
-		console.log("existingUser", existingUser)
 
 		if (!existingUser) {
 			return {
@@ -278,7 +277,6 @@ export class UserResolver {
 			password
 		);
 
-		console.log("isPasswordValid", isPasswordValid)
 
 		if (!isPasswordValid) {
 			return {
@@ -338,7 +336,6 @@ export class UserResolver {
 			where: { id: user.userId },
 			relations: ['contract'],
 		});
-		console.log('existingUser register merchant', existingUser);
 		if (!existingUser) {
 			return {
 				code: 400,
@@ -354,7 +351,6 @@ export class UserResolver {
 			merchantSecretKey: secretKey,
 		});
 		const createMetadataResult = await existingUserMetadata.save();
-		console.log('createMetadataResult', createMetadataResult);
 		if (!createMetadataResult)
 			return {
 				code: 500,

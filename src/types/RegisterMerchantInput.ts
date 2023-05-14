@@ -19,4 +19,7 @@ export class RegisterMerchantInput {
   
   @Field()
 	note: string
+
+  @Field()
+  type: string
 }

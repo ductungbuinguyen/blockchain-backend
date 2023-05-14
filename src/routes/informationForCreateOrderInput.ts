@@ -13,31 +13,31 @@ router.get('/', cors(), async (req, res) => {
     where: { id: merchantApiKey },
     relations: ['contract', 'merchantMetaData'],
   });
-  console.log("merchantApiKey", merchantApiKey)
-  console.log("signature", signature)
-  console.log("existingUser", existingUser)
-  console.log("req query", req.query)
+  // console.log("merchantApiKey", merchantApiKey)
+  // console.log("signature", signature)
+  // console.log("existingUser", existingUser)
+  // console.log("req query", req.query)
   if (!existingUser || !existingUser?.merchantMetaData) return res.sendStatus(403)
   const reGeneratedSignature = generatePublicApiSignature({
     body: JSON.stringify(req.query),
     secretKey: existingUser.merchantMetaData.merchantSecretKey
   })
-  console.log("reGeneratedSignature", reGeneratedSignature)
+  // console.log("reGeneratedSignature", reGeneratedSignature)
   if(signature !== reGeneratedSignature) return res.sendStatus(403)
-  console.log("pass signature")
+  // console.log("pass signature")
   const nonce = await getContractNonce(existingUser?.contract?.address);
-  console.log("nonce", nonce)
+  // console.log("nonce", nonce)
   const timestamp = await getCurrentBlockTimestamp();
-  console.log("timestamp", timestamp)
+  // console.log("timestamp", timestamp)
   const buyerUser = await User.findOne({
     where: { email: buyerEmail },
     relations: ['contract'],
   });
-  console.log("buyer user", buyerUser)
+  // console.log("buyer user", buyerUser)
   const buyerAddress = buyerUser?.metaMaskPublicKey
-  console.log('buyerAddress', buyerAddress)
+  // console.log('buyerAddress', buyerAddress)
   if(!nonce || !timestamp || !buyerAddress) res.sendStatus(500)
-  console.log('pass null data')
+  // console.log('pass null data')
   const dataSend = {
     buyerAddress,
     nonce: nonce.toString(),
@@ -47,7 +47,7 @@ router.get('/', cors(), async (req, res) => {
     body: JSON.stringify(dataSend),
     secretKey: existingUser.merchantMetaData.merchantSecretKey,
   })
-  console.log("generateDataSendSignature", generateDataSendSignature)
+  // console.log("generateDataSendSignature", generateDataSendSignature)
   return res.set('bcps-signature', generateDataSendSignature).json(dataSend)
 })
 

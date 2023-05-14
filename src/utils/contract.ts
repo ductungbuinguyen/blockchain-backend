@@ -15,13 +15,20 @@ import { ActivityHistory } from '../entities/ActivityHistory';
 import { ActivityHistoryType } from '../types/ActivityHistoryType';
 import { publishActivityHistory } from './pubsub';
 import QRCode from 'qrcode';
-import { MoreThan } from 'typeorm';
+import { MoreThanOrEqual } from 'typeorm';
 import crypto from 'crypto'
+import { once, EventEmitter } from 'events';
 
 const provider = new providers.WebSocketProvider(
 	process.env.BLOCKCHAIN_WS_PROVIDER ||
 		'wss://ws-api.binance.com/ws-api/v3'
 );
+const orderQREventEmitter = new EventEmitter();
+orderQREventEmitter.on('start', (start, end) => {
+  console.log(`started from ${start} to ${end}`);
+});
+
+orderQREventEmitter.emit('start', 1, 100);
 
 const jsonRpcProvider = new providers.JsonRpcProvider(process.env.JSON_RPC_PROVIDER || "https://data-seed-prebsc-2-s1.binance.org:8545/")
 
@@ -59,10 +66,11 @@ const listenEventsBootstrap = async () => {
 			address: eShopContractFactoryAddress,
 			topics: [id('ShopDeployed(address,address,address)')],
 		},
-		(...args: any) => {
+		async (...args: any) => {
 			console.log('args', args);
 			const event = args[args.length - 1];
-			onShopDeployed(event);
+			const isEventExisted = await isExistedEvent(event?.transactionHash)
+			if(!isEventExisted) onShopDeployed(event);
 		}
 	);
 	initBlocksSync()
@@ -101,16 +109,14 @@ const onShopDeployed = async (event: any) => {
 
 const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 	const { transactionHash, blockNumber } = event;
-	console.log("event", event)
 	const { _id, _buyer, _price, _shipDeadline, _confirmDeadline, _orderTime, _name } =
-		event.args;
+	event.args;
 	const	decentralizedId = _id.toString()
 	const buyer = await User.findOne({
 		where: {
 			metaMaskPublicKey: _buyer,
 		},
 	});
-	console.log("orderBuyer", buyer)
 	if (!buyer) return;
 	const price = formatEther(_price)
 	const base64QrCode = await new Promise((resolve, reject) => {
@@ -127,9 +133,8 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 			resolve(code);
 		});
 	}) as string;
-
-	console.log("base64QrCode", base64QrCode)
-
+	
+	console.log("on order create handler")
 	const order = Order.create({
 		buyer,
 		price,
@@ -143,7 +148,6 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 		name: _name,
 	});
 	const result = await order.save();
-	console.log("result createOrder DB", result);
 	const newActivity = await ActivityHistory.create({
 		type: ActivityHistoryType.CREATE_ORDER,
 		targetOrder: result,
@@ -151,22 +155,24 @@ const onOrderCreatedHandler = async (contract: Contract, event: any) => {
 		blockNumber
 	});
 	const newActivityResult = await newActivity.save();
-	console.log("newActivityResult", newActivityResult)
 	publishActivityHistory({
 		userIds: [contract.seller.id, buyer.id],
 		activityHistory: newActivityResult,
 	});
+	orderQREventEmitter.emit(transactionHash, base64QrCode);
 };
 
 const onPaidHandler = async (contract: Contract, event: any) => {
-	const { transactionHash, blockNumber } = event;
+	const { transactionHash, blockNumber, address } = event;
 	const { _id } = event.args;
-	const order = await Order.findOne({
+	const orders = await Order.find({
 		where: {
 			decentralizedId: _id.toString(),
+			contract
 		},
-		relations: ["buyer"]
+		relations: ["buyer", "contract"]
 	});
+	const order = orders.find(order => order.contract.address === address)
 	if (order) {
 		order.status = OrderStatus.PAID;
 		const result = await order.save();
@@ -186,13 +192,15 @@ const onPaidHandler = async (contract: Contract, event: any) => {
 
 const onShippingHandler = async (contract: Contract, event: any) => {
 	const { _id } = event.args;
-	const { transactionHash, blockNumber } = event;
-	const order = await Order.findOne({
+	const { transactionHash, blockNumber, address } = event;
+	const orders = await Order.find({
 		where: {
 			decentralizedId: _id.toString(),
+			contract
 		},
-		relations: ['buyer'],
+		relations: ["buyer", "contract"]
 	});
+	const order = orders.find(order => order.contract.address === address)
 	if (order) {
 		order.status = OrderStatus.SHIPPING;
 		const result = await order.save();
@@ -212,15 +220,18 @@ const onShippingHandler = async (contract: Contract, event: any) => {
 
 const onSellerConfirmShippedHandler = async (contract: Contract, event: any) => {
 	const { _id } = event.args;
-	const { transactionHash, blockNumber } = event;
-	const order = await Order.findOne({
+	const { transactionHash, blockNumber, address } = event;
+	const orders = await Order.find({
 		where: {
 			decentralizedId: _id.toString(),
+			contract
 		},
-		relations: ['buyer'],
+		relations: ["buyer", "contract"]
 	});
+	const order = orders.find(order => order.contract.address === address)
 	if (order) {
 		order.isSellerConfirm = true
+		order.status = OrderStatus.CANCELED
 		const result = await order.save();
 		console.log("seller confirm createorder result", result)
 		const newActivity = await ActivityHistory.create({
@@ -238,13 +249,15 @@ const onSellerConfirmShippedHandler = async (contract: Contract, event: any) => 
 
 const onBuyerConfirmShippedHandler = async (contract: Contract, event: any) => {
 	const { _id } = event.args;
-	const { transactionHash, blockNumber } = event;
-	const order = await Order.findOne({
+	const { transactionHash, blockNumber, address } = event;
+	const orders = await Order.find({
 		where: {
 			decentralizedId: _id.toString(),
+			contract
 		},
-		relations: ['buyer'],
+		relations: ["buyer", "contract"]
 	});
+	const order = orders.find(order => order.contract.address === address)
 	if (order) {
 		order.isBuyerConfirm = true
 		order.status = OrderStatus.COMPLETE;
@@ -265,12 +278,15 @@ const onBuyerConfirmShippedHandler = async (contract: Contract, event: any) => {
 
 const onTimeoutHandler = async (contract: Contract, event: any) => {
 	const { _id } = event.args;
-	const { transactionHash, blockNumber } = event;
-	const order = await Order.findOne({
+	const { transactionHash, blockNumber, address } = event;
+	const orders = await Order.find({
 		where: {
 			decentralizedId: _id.toString(),
+			contract
 		},
+		relations: ["buyer", "contract"]
 	});
+	const order = orders.find(order => order.contract.address === address)
 	if (order) {
 		order.status = OrderStatus.CANCELED;
 		const result = await order.save();
@@ -348,6 +364,7 @@ const contractEvents = [
 	},
 ];
 
+
 const initBlocksSync = async () => {
 	console.log('initBlocksSync')
 	let blockNumber = await jsonRpcProvider.getBlockNumber()
@@ -355,7 +372,7 @@ const initBlocksSync = async () => {
 	setInterval(async () => {
 		const newTransactionHashes = (await ActivityHistory.getRepository().find({
 			where: {
-				blockNumber: MoreThan(blockNumber)
+				blockNumber: MoreThanOrEqual(blockNumber)
 			},
 			select: ["transactionHash"]
 		})).map(event => event.transactionHash)
@@ -398,10 +415,11 @@ const initEventListenerForContract = async (contract: Contract) => {
 				address,
 				topics: contractEvent.topics,
 			},
-			(...args: any) => {
+			async (...args: any) => {
 				console.log('args', args);
 				const event = args[args.length - 1];
-				contractEvent.handlerFunction(contract, event);
+				const isEventExisted = await isExistedEvent(event?.transactionHash)
+				if(!isEventExisted) contractEvent.handlerFunction(contract, event);
 			}
 		);
 	});
@@ -414,8 +432,9 @@ const createOrder = async ({
 	price,
 	shipDeadline,
 	signature,
-	name
+	name,
 }: any) => {
+	let base64QrCode;
 	const etherContract = new EthersContract(
 		contractAddress,
 		IEcommerceShop,
@@ -433,8 +452,10 @@ const createOrder = async ({
 		name,
 	], signature
 	);
-	console.log("createOrderContractResult", createOrderContractResult)
-	return createOrderContractResult?.hash;
+	const transactionHash = createOrderContractResult?.hash
+	orderQREventEmitter.once(transactionHash, qrCode => base64QrCode = qrCode)
+	await once(orderQREventEmitter, transactionHash)
+	return base64QrCode;
 };
 
 const getContractNonce = async (address: string) => {
@@ -474,6 +495,17 @@ const generateRandomKey = () => {
 	}
 	return result;
 };
+
+const isExistedEvent = async (transactionHash: string) => {
+	const existedEventId = (await ActivityHistory.getRepository().findOne({
+		where: {
+			transactionHash
+		},
+		select: ["id"]
+	}))
+	if(existedEventId?.id) return true;
+	return false;
+}
 
 const generatePublicApiSignature = ({
 	body,

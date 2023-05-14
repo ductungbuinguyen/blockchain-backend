@@ -31,29 +31,22 @@ import { ActivityHistory } from './entities/ActivityHistory';
 import { ActivityHistoryResolver } from './resolvers/activityHistory';
 
 const main = async () => {
-	console.log('Starting')
-	console.log('host', process.env.DB_HOST)
-	console.log('host', process.env.DB_NAME)
-	console.log('host', process.env.DB_USERNAME)
-	console.log('host', process.env.DB_PASSWORD)
-	const result = await createConnection({
+	await createConnection({
 		type: 'postgres',
 		host: process.env.DB_HOST,
 		database: process.env.DB_NAME,
 		username: process.env.DB_USERNAME,
 		password: process.env.DB_PASSWORD,
 		port: Number(process.env.DB_PORT),
-		logging: true,
+		// logging: true,
 		synchronize: true,
 		entities: [User, Order, Contract, MerchantMetaData, ActivityHistory],
 	});
 
-	console.log("connect DB result", result)
-
 	const app = express();
 	const pubSub = pubsub;
 
-	app.use(cors({ origin: ['http://localhost:3000', 'https://localhost:3000', 'https://thesisblockchain.tech'], credentials: true }));
+	app.use(cors({ origin: true, credentials: true }));
 	app.use(cookieParser());
 	app.use(json({ limit: 99999999999 }))
 	app.use('/refresh_token', refreshTokenRouter);
@@ -72,25 +65,12 @@ const main = async () => {
 	const wsServer = new WebSocketServer({
 		server: httpServer,
 		path: '/graphql',
-		maxPayload: 99999999999
+		maxPayload: 99999999999,
 	});
 
 	const serverCleanup = useServer(
 		{
 			schema,
-			onConnect: async () => {
-				// Check authentication every time a client connects.
-				console.log('connected');
-			},
-			onDisconnect() {
-				console.log('Disconnected!');
-			},
-			onClose() {
-				console.log('Closed!');
-			},
-			onComplete() {
-				console.log('Complete!');
-			},
 			context: getDynamicContextWebSocket,
 		},
 		wsServer
@@ -119,7 +99,7 @@ const main = async () => {
 	apolloServer.applyMiddleware({
 		app,
 		path: '/graphql',
-		cors: { origin: ['http://localhost:3000', 'https://localhost:3000', 'https://thesisblockchain.tech'], credentials: true},
+		cors: { origin: true, credentials: true},
 	});
 
 	app.get(
@@ -128,11 +108,11 @@ const main = async () => {
 			endpoint: '/graphql',
 		})
 	);
-
+	
 	const PORT = process.env.PORT || 4000;
-
+	
 	await new Promise((resolve) =>
-		httpServer.listen({ port: PORT }, resolve as () => void)
+	httpServer.listen({ port: PORT }, resolve as () => void)
 	);
 
 	console.log(

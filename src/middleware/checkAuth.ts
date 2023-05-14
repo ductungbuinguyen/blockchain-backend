@@ -10,7 +10,6 @@ export const checkAuth: MiddlewareFn<Context> = ({ context }, next) => {
 		// authHeader here is "Bearer accessToken"
 		const authHeader = context.req.header('Authorization')
 		const accessToken = authHeader && authHeader.split(' ')[1]
-		console.log('accessToken', accessToken)
 		if (!accessToken)
 			throw new AuthenticationError(
 				'Not authenticated to perform GraphQL operations'

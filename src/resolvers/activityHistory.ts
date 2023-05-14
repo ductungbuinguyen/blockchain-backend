@@ -84,10 +84,7 @@ export class ActivityHistoryResolver {
 	@Subscription({
 		topics: 'ACTIVITY_HISTORY',
 		filter: ({ payload, context }) => {
-			console.log('payload', payload);
-			console.log('context', context);
 			const checker = payload?.userIds?.includes(context?.user.userId);
-			console.log('checker', checker);
 			if (checker) return true;
 			return false;
 		},
@@ -95,7 +92,6 @@ export class ActivityHistoryResolver {
 	activityHistory(
 		@Root() activityHistoryPayload: ActivityHistoryPayload
 	): ActivityHistory {
-		console.log("activityHistoryPayload",activityHistoryPayload.activityHistory)
 		return activityHistoryPayload.activityHistory;
 	}
 }

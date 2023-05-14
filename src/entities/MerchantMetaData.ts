@@ -48,4 +48,10 @@ export class MerchantMetaData extends BaseEntity {
   @Field(() => User)
 	@OneToOne(() => User, (user) => user.merchantMetaData)
   owner!: User
+
+  @Field()
+  @Column({
+    nullable: true,
+  })
+  type: string;
 }
